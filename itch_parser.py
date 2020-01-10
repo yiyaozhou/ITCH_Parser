@@ -22,21 +22,20 @@ import logging
 
 
 """
-The following functions are used to parse ITCH 5.0 binary data. 
+The following functions (parse_*) are used to parse ITCH 5.0 binary data and update the input dictionaries. 
 
+input:
 -- Dictionary "system" stores system event message type and timestamp, which was used to define trading start and end.
 
--- Dictionary "order" stores all orders details, including timestamp, reference number, stock ticker, shares and stock price. 
-Reference number is the key. The main use for this dictionary is to audit the stock tickers and prices. 
+-- Dictionary "order" stores all order details, including timestamp, reference number, stock ticker, shares and stock price. 
+Reference number is the key. The main use of this dictionary is to audit the stock tickers and prices. 
 
--- Dictionary "execute" stores all order execution details, inculding timestamp, reference number, stock ticker, executed shares, executed price, match number and printable. 
-Match number is the key. The stock ticker and executed price can be populated by referring to "order" dict using the reference numbers.
+-- Dictionary "execute" stores all order execution details, including timestamp, reference number, stock ticker, executed shares,
+executed price, match number and printable. Match number is the key. The stock ticker and executed price can be populated by
+referring to "order" using the reference number.
 
 -- Dictionary "avg" stores all the stock tickers and VWAPs for every trading hour. trading hour count is the key.
 """
-
-
-# parser.py
 def parse_system_event_message(f, order, execute, system):
     data = f.read(11)
     stock_locate = int.from_bytes(data[:1], byteorder='big', signed=False)
@@ -241,6 +240,19 @@ def handling_funcs():
     return handling_funcs
 
 
+"""
+calculate_weighted_avg calculates the VWAP for each stock during a certain time range (start_time, end_time].
+
+input:
+-- Dictionary "execute" stores all order execution details, including timestamp, reference number, stock ticker, executed shares,
+executed price, match number and printable. Match number is the key. The stock ticker and executed price can be populated by
+referring to "order" using the reference number.
+
+-- Integer start_time and end_time: nanoseconds representing the timestamp for the time range.
+
+output:
+-- A dictionary storing the VWAP for each stock with the stock code as the key.
+"""
 def calculate_weighted_avg(execute, start_time, end_time):
     price_volume = {}
     for key in execute:
@@ -257,11 +269,19 @@ def calculate_weighted_avg(execute, start_time, end_time):
                 price_volume[stock] = {'volume': volume + cur_volume, 'volpri': price * volume + cur_volpri}
     return price_volume
 
+"""
+get_hourly_VWAP parses the input file and returns the VWAP for all the stocks in each trading hour.
 
-def get_hourly_VWAP(file):
+input:
+-- String file: the absolute path to the input file.
+
+output:
+-- A dictionary storing the VWAP of stocks in each trading hour, with the trading hour as the key.
+"""
+def get_hourly_VWAP(file_path):
     avg = {}
     handling_funcs()
-    with open(file, "rb") as f:
+    with open(file_path, "rb") as f:
         order = {}
         execute = {}
         system = {}
@@ -300,14 +320,21 @@ def get_hourly_VWAP(file):
                     logging.info('VWAP for trading close was calculated.')
                     logging.info('VWAP calculation done.')
                     break
-                    print('wtf something must be wrong')
-                    print(timestamp)
                 except:
                     pass
     return avg
 
 
-def output_combine_df(average_dict, filename):
+"""
+output_combine_df writes the VWAP in CSV format.
+
+input:
+-- Dictionary avg stores the VWAP of stocks in each trading hour, with the trading hour as the key.
+
+output:
+-- A CSV file.
+"""
+def output_combine_df(avg, filename):
     for i in avg:
         temp_df = pd.DataFrame.from_dict(avg[i], orient='index').rename(columns={0: "VWAP{0}".format(i+1)}).sort_index()
         if i == 0:
@@ -319,14 +346,11 @@ def output_combine_df(average_dict, filename):
 
 if __name__ == "__main__":
     file_path = input("Please enter the path of the unzipped file, example C://Users//ITCH//01302019.NASDAQ_ITCH50  ")
-    logging.getLogger().setLevel(logging.INFO)
-    t1 = datetime.datetime.now()
-    average_dict = get_hourly_VWAP(file_path)
-    t2 = datetime.datetime.now()
-    print(t2-t1)
-    output_combine_df(average_dict, "{0}.csv".format(file_path))
-    t3 = datetime.datetime.now()
-    print(t3-t1)
+    logging.getLogger().setLevel(logging.INFO)	
+    avg = get_hourly_VWAP(file_path)
+    output_combine_df(avg, "{0}.csv".format(file_path))
+    logging.info('%s %s%s', 'The results were stored in', file_path, '.csv')
+
 
 
 
