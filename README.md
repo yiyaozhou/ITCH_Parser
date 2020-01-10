@@ -27,12 +27,12 @@ referring to "order" using the reference number.
 ## calculate_weighted_avg 
 calculate_weighted_avg calculates the VWAP for each stock during a certain time range (start_time, end_time].
 
-input:  
+input:    
 -- Dictionary "execute" stores all order execution details, including timestamp, reference number, stock ticker, executed shares,
 executed price, match number and printable. Match number is the key. The stock ticker and executed price can be populated by
 referring to "order" using the reference number.
 
 -- Integer start_time and end_time: nanoseconds representing the timestamp for the time range.
 
-output: 
+output:   
 -- A dictionary storing the VWAP for each stock with the stock code as the key.
